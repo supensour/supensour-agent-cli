@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+# supensour — install/update supensour-agent skills as a plugin across AI coding tools.
+#
+# Usage:
+#   supensour init                      Clone/refresh the local cache
+#   supensour install [platform]        Install for one platform, or all if omitted
+#   supensour update  [platform]        Update one platform, or all if omitted
+#   supensour help                      Show this help
+#
+#   platform ∈ { claude | copilot | antigravity | cursor }
+set -euo pipefail
+
+# --- Resolve our own lib dir (works through symlinks on PATH) ---------------
+_self="${BASH_SOURCE[0]}"
+while [ -h "$_self" ]; do
+  _dir="$(cd -P "$(dirname "$_self")" && pwd)"
+  _self="$(readlink "$_self")"
+  [[ "$_self" != /* ]] && _self="$_dir/$_self"
+done
+BIN_DIR="$(cd -P "$(dirname "$_self")" && pwd)"
+ROOT_DIR="$(cd "$BIN_DIR/.." && pwd)"
+LIB_DIR="$ROOT_DIR/lib"
+
+# shellcheck source=lib/common.sh
+. "$LIB_DIR/common.sh"
+for _p in $PLATFORMS; do
+  # shellcheck source=/dev/null
+  . "$LIB_DIR/platform-${_p}.sh"
+done
+
+usage() {
+  sed -n '2,10p' "$_self" | sed 's/^# \{0,1\}//'
+}
+
+valid_platform() {
+  case " $PLATFORMS " in *" $1 "*) return 0 ;; *) return 1 ;; esac
+}
+
+# cmd_run <install|update> [platform]
+cmd_run() {
+  local action="$1" platform="${2:-}"
+  if [ -z "$platform" ]; then
+    run_all "$action"
+    return
+  fi
+  valid_platform "$platform" || die "unknown platform: $platform (expected: $PLATFORMS)"
+  dispatch "$platform" "$action" strict
+}
+
+main() {
+  local cmd="${1:-help}"
+  case "$cmd" in
+    init)              ensure_cache; ok "cache ready: $CACHE_DIR" ;;
+    install)           cmd_run install "${2:-}" ;;
+    update)            cmd_run update  "${2:-}" ;;
+    help|-h|--help)    usage ;;
+    *)                 warn "unknown command: $cmd"; usage; exit 1 ;;
+  esac
+}
+
+main "$@"
