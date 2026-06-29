@@ -12,6 +12,8 @@ PLUGIN="supensour"
 MARKETPLACE="supensour"
 REPO_SLUG="supensour/supensour-agent"
 REPO_URL="https://github.com/supensour/supensour-agent"
+CACHE_BRANCH="${SUPENSOUR_CACHE_BRANCH:-master}"
+CACHE_ARCHIVE_URL="${REPO_URL}/archive/refs/heads/${CACHE_BRANCH}.tar.gz"
 
 # Canonical local clone. Antigravity installs from this path (it has no
 # github marketplace); also serves as the cursor pull target.
@@ -43,15 +45,61 @@ cli_for() {
 }
 
 # --- Cache ------------------------------------------------------------------
-# ensure_cache — clone the agent repo to CACHE_DIR, or fast-forward if present.
-ensure_cache() {
+# cache_fetch_via_git — clone or pull the agent repo into CACHE_DIR.
+cache_fetch_via_git() {
   if [ -d "$CACHE_DIR/.git" ]; then
     log "Updating cache: $CACHE_DIR"
     git -C "$CACHE_DIR" pull --ff-only || die "git pull failed in $CACHE_DIR"
+    return
+  fi
+
+  if [ -e "$CACHE_DIR" ]; then
+    log "Replacing existing cache: $CACHE_DIR"
+    rm -rf "$CACHE_DIR"
+  fi
+
+  log "Cloning $REPO_URL → $CACHE_DIR"
+  mkdir -p "$(dirname "$CACHE_DIR")"
+  git clone --branch "$CACHE_BRANCH" "$REPO_URL" "$CACHE_DIR" || die "git clone failed"
+}
+
+# cache_fetch_via_archive — download the agent repo tarball into CACHE_DIR.
+cache_fetch_via_archive() {
+  have curl || die "curl is required but not on PATH."
+  have tar  || die "tar is required but not on PATH."
+
+  local tmp extracted
+  tmp="$(mktemp -d)"
+
+  log "Downloading $CACHE_ARCHIVE_URL"
+  if ! curl -fsSL "$CACHE_ARCHIVE_URL" | tar -xz -C "$tmp"; then
+    rm -rf "$tmp"
+    die "archive download or extract failed"
+  fi
+
+  extracted="$(find "$tmp" -mindepth 1 -maxdepth 1 -type d | head -1)"
+  if [ -z "$extracted" ]; then
+    rm -rf "$tmp"
+    die "archive extraction failed — no top-level directory found"
+  fi
+
+  if [ -e "$CACHE_DIR" ]; then
+    log "Replacing existing cache: $CACHE_DIR"
+    rm -rf "$CACHE_DIR"
+  fi
+
+  mkdir -p "$(dirname "$CACHE_DIR")"
+  mv "$extracted" "$CACHE_DIR"
+  rm -rf "$tmp"
+  log "Cache ready: $CACHE_DIR"
+}
+
+# ensure_cache — refresh the agent repo at CACHE_DIR (git or archive fallback).
+ensure_cache() {
+  if have git; then
+    cache_fetch_via_git
   else
-    log "Cloning $REPO_URL → $CACHE_DIR"
-    mkdir -p "$(dirname "$CACHE_DIR")"
-    git clone "$REPO_URL" "$CACHE_DIR" || die "git clone failed"
+    cache_fetch_via_archive
   fi
 }
 

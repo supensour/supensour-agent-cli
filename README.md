@@ -1,4 +1,4 @@
-# supensour-cli
+# supensour-agent-cli
 
 Install [supensour-agent](https://github.com/supensour/supensour-agent) skills as a
 **plugin** into your AI coding tools — at global (user) scope, from one command.
@@ -8,13 +8,22 @@ Supported platforms: **Claude Code**, **GitHub Copilot CLI**, **Antigravity CLI*
 ## Install
 
 ```bash
-git clone https://github.com/supensour/supensour-cli
-cd supensour-cli
-bash install.sh
+curl -fsSL https://raw.githubusercontent.com/supensour/supensour-agent-cli/master/install-remote.sh | bash
 ```
 
-This puts `supensour` on your PATH (`~/.local/bin`) and clones the skill cache to
+This puts `supensour` on your PATH (`~/.local/bin`), installs the CLI to
+`~/.supensour/supensour-agent-cli`, and clones the skill cache to
 `~/.supensour/supensour-agent`. Restart your shell afterward.
+
+<details>
+<summary>Manual install (git clone)</summary>
+
+```bash
+git clone https://github.com/supensour/supensour-agent-cli
+cd supensour-agent-cli
+bash install.sh
+```
+</details>
 
 ## Usage
 
@@ -43,9 +52,10 @@ session start.
 
 ## Requirements
 
-- `bash`, `git`
+- `bash` (`curl` and `tar` when `git` is not installed — for CLI bootstrap and skill cache)
 - The CLI for each platform you target (`claude`, `copilot`, `agy`, `cursor`)
 - Windows: use Git Bash or WSL
+
 
 ## License
 

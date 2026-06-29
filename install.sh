@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # install.sh — put `supensour` on PATH and clone the skill cache.
 #
-#   1. Copy this CLI (bin/ + lib/) → ~/.supensour/cli
-#   2. Symlink ~/.local/bin/supensour → ~/.supensour/cli/bin/supensour
+#   1. Copy this CLI (bin/ + lib/) → ~/.supensour/supensour-agent-cli
+#   2. Symlink ~/.local/bin/supensour → ~/.supensour/supensour-agent-cli/bin/supensour
 #   3. Ensure ~/.local/bin is on PATH (idempotent shell-rc append)
 #   4. Clone supensour-agent → ~/.supensour/supensour-agent
 #
@@ -11,16 +11,12 @@ set -euo pipefail
 
 SRC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-REPO_URL="https://github.com/supensour/supensour-agent"
-CLI_HOME="$HOME/.supensour/cli"
-CACHE_DIR="$HOME/.supensour/supensour-agent"
+CLI_HOME="$HOME/.supensour/supensour-agent-cli"
 BIN_DIR="$HOME/.local/bin"
 BIN_LINK="$BIN_DIR/supensour"
 
 log() { printf '%s\n' "$*" >&2; }
 die() { printf '✖ %s\n' "$*" >&2; exit 1; }
-
-command -v git >/dev/null 2>&1 || die "git is required but not on PATH."
 
 # 1. Copy CLI into a stable home.
 log "Installing CLI → $CLI_HOME"
@@ -47,14 +43,10 @@ case "$(basename "${SHELL:-}")" in
   *)    ensure_path "$HOME/.profile" ;;
 esac
 
-# 4. Clone the skill cache (used by antigravity; canonical source).
-if [ -d "$CACHE_DIR/.git" ]; then
-  log "Cache exists: $CACHE_DIR (run 'supensour init' to refresh)"
-else
-  log "Cloning $REPO_URL → $CACHE_DIR"
-  mkdir -p "$(dirname "$CACHE_DIR")"
-  git clone "$REPO_URL" "$CACHE_DIR"
-fi
+# 4. Fetch the skill cache (used by antigravity; canonical source).
+# shellcheck source=lib/common.sh
+. "$SRC_DIR/lib/common.sh"
+ensure_cache
 
 cat >&2 <<EOF
 
