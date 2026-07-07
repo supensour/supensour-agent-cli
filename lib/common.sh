@@ -103,6 +103,29 @@ ensure_cache() {
   fi
 }
 
+# --- Clean plugin staging ---------------------------------------------------
+# stage_plugin_dir — copy the cache into a fresh temp dir WITHOUT `.git` (or OS
+# cruft) and print the staged path. CACHE_DIR is a full git clone; git loose
+# objects are mode 0444 (read-only), so copying `.git` into a plugin install dir
+# makes a later re-install fail with EACCES when it tries to overwrite them. Callers
+# install from the staged path, then `rm -rf "$(dirname staged)"`.
+stage_plugin_dir() {
+  local tmp staged
+  tmp="$(mktemp -d)"
+  staged="$tmp/$PLUGIN"
+  mkdir -p "$staged"
+  if have rsync; then
+    rsync -a --exclude '.git' --exclude '.DS_Store' "$CACHE_DIR"/ "$staged"/ >/dev/null \
+      || { rm -rf "$tmp"; die "failed to stage plugin from $CACHE_DIR"; }
+  else
+    cp -R "$CACHE_DIR"/. "$staged"/ 2>/dev/null \
+      || { rm -rf "$tmp"; die "failed to stage plugin from $CACHE_DIR"; }
+    rm -rf "$staged/.git"
+    find "$staged" -name '.DS_Store' -delete 2>/dev/null || true
+  fi
+  printf '%s' "$staged"
+}
+
 # --- Post-update reminder ---------------------------------------------------
 # reload_reminder <platform> — plugins/skills load at session start; a running
 # session must be restarted to pick up changes. The CLI can't reload it.
