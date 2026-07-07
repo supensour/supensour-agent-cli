@@ -16,17 +16,19 @@ Restart your shell afterward.
 ## Usage
 
 ```bash
-supensour init
-supensour install [platform]
-supensour update  [platform]
+supensour init                          # clone/refresh the local skill cache
+supensour plugins install [platform]    # install the plugin
+supensour plugins update  [platform]    # update the plugin
+supensour update                        # update the supensour CLI itself
 supensour help
 ```
 
 **Commands**
 
 - `init` — clone or refresh the local skill cache (`git` or `curl` + `tar` fallback)
-- `install [platform]` — install the plugin for one platform, or all detected platforms if omitted
-- `update [platform]` — update the plugin for one platform, or all detected platforms if omitted
+- `plugins install [platform]` — install the plugin for one platform, or all detected platforms if omitted
+- `plugins update [platform]` — update the plugin for one platform, or all detected platforms if omitted
+- `update` — update the **CLI itself** to the latest release (same mechanism as the install command below)
 - `help` — print usage (`-h` and `--help` are equivalent)
 
 **`platform`** — `claude` | `copilot` | `antigravity` | `cursor`
@@ -34,14 +36,18 @@ supensour help
 Omit `platform` to run every platform whose CLI is on your PATH (others are skipped). Pass a
 platform to target one tool only — that fails if its CLI is missing.
 
-Restart your shell after installing the CLI. Restart the AI tool session after `update` — plugins
-and skills load at session start.
+Restart your shell after installing the CLI. Restart the AI tool session after a plugin update —
+plugins and skills load at session start.
 
 ```bash
-supensour install              # all detected tools
-supensour install claude       # one platform
-supensour update antigravity
+supensour plugins install              # all detected tools
+supensour plugins install claude       # one platform
+supensour plugins update antigravity   # update one plugin
+supensour update                       # update the CLI itself
 ```
+
+> Older `supensour install` / `supensour update <platform>` still work but print a
+> deprecation notice — use the `plugins` forms.
 
 ## Requirements
 

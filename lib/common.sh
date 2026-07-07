@@ -19,10 +19,15 @@ CACHE_ARCHIVE_URL="${REPO_URL}/archive/refs/heads/${CACHE_BRANCH}.tar.gz"
 # github marketplace); also serves as the cursor pull target.
 CACHE_DIR="$HOME/.supensour/supensour-agent"
 
+# --- This CLI's own repo (for `supensour update`, the CLI self-update) ------
+CLI_REPO_URL="https://github.com/supensour/supensour-agent-cli"
+CLI_BRANCH="${SUPENSOUR_CLI_BRANCH:-master}"
+CLI_ARCHIVE_URL="${CLI_REPO_URL}/archive/refs/heads/${CLI_BRANCH}.tar.gz"
+
 # Platforms handled by the CLI, in run-all order.
 PLATFORMS="claude copilot antigravity cursor"
 
-export PLUGIN MARKETPLACE REPO_SLUG REPO_URL CACHE_DIR PLATFORMS
+export PLUGIN MARKETPLACE REPO_SLUG REPO_URL CACHE_DIR CLI_REPO_URL CLI_BRANCH PLATFORMS
 
 # --- Logging ----------------------------------------------------------------
 log()  { printf '%s\n' "$*" >&2; }
@@ -124,6 +129,36 @@ stage_plugin_dir() {
     find "$staged" -name '.DS_Store' -delete 2>/dev/null || true
   fi
   printf '%s' "$staged"
+}
+
+# --- CLI self-update --------------------------------------------------------
+# update_cli — update the supensour CLI itself (bin/ + lib/), mirroring the
+# install-remote.sh bootstrap. Fetches the latest CLI into a temp dir (git clone,
+# else curl+tar), then runs its install.sh to refresh the on-PATH install.
+update_cli() {
+  local tmp src
+  tmp="$(mktemp -d)"
+  # shellcheck disable=SC2064
+  trap "rm -rf '$tmp'" RETURN
+
+  if have git; then
+    log "Fetching latest CLI: $CLI_REPO_URL ($CLI_BRANCH)"
+    git clone --depth 1 --branch "$CLI_BRANCH" "$CLI_REPO_URL" "$tmp/cli" >/dev/null 2>&1 \
+      || die "git clone failed for $CLI_REPO_URL"
+    src="$tmp/cli"
+  else
+    have curl || die "curl is required to update the CLI without git."
+    have tar  || die "tar is required to update the CLI without git."
+    log "Downloading $CLI_ARCHIVE_URL"
+    curl -fsSL "$CLI_ARCHIVE_URL" | tar -xz -C "$tmp" || die "CLI download or extract failed"
+    src="$(find "$tmp" -mindepth 1 -maxdepth 1 -type d | head -1)"
+    [ -n "$src" ] || die "CLI extraction failed — no top-level directory found"
+  fi
+
+  [ -f "$src/install.sh" ] || die "fetched CLI is missing install.sh ($src)"
+  log "Reinstalling CLI from latest…"
+  bash "$src/install.sh" || die "CLI install failed"
+  ok "supensour CLI updated. Restart your shell if PATH changed."
 }
 
 # --- Post-update reminder ---------------------------------------------------

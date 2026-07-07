@@ -51,6 +51,7 @@ ensure_cache
 cat >&2 <<EOF
 
 ✓ Done. Restart your shell (or: export PATH="\$HOME/.local/bin:\$PATH").
-  Then run:  supensour install <claude|copilot|antigravity|cursor>
-  Or all:    supensour install
+  Then run:  supensour plugins install <claude|copilot|antigravity|cursor>
+  Or all:    supensour plugins install
+  Update CLI later:  supensour update
 EOF

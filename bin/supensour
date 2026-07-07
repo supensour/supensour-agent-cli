@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
-# supensour — install/update supensour-agent skills as a plugin across AI coding tools.
+# supensour — manage the supensour-agent plugin across AI coding tools.
 #
 # Usage:
-#   supensour init                      Clone/refresh the local cache
-#   supensour install [platform]        Install for one platform, or all if omitted
-#   supensour update  [platform]        Update one platform, or all if omitted
-#   supensour help                      Show this help
+#   supensour init                          Clone or refresh the local skill cache
+#   supensour plugins install [platform]    Install the plugin for one platform (or all)
+#   supensour plugins update  [platform]    Update the plugin for one platform (or all)
+#   supensour update                        Update the supensour CLI itself
+#   supensour help                          Show this help
 #
 #   platform ∈ { claude | copilot | antigravity | cursor }
 set -euo pipefail
@@ -29,14 +30,14 @@ for _p in $PLATFORMS; do
 done
 
 usage() {
-  sed -n '2,10p' "$_self" | sed 's/^# \{0,1\}//'
+  sed -n '2,11p' "$_self" | sed 's/^# \{0,1\}//'
 }
 
 valid_platform() {
   case " $PLATFORMS " in *" $1 "*) return 0 ;; *) return 1 ;; esac
 }
 
-# cmd_run <install|update> [platform]
+# cmd_run <install|update> [platform] — plugin action for one platform, or all.
 cmd_run() {
   local action="$1" platform="${2:-}"
   if [ -z "$platform" ]; then
@@ -47,13 +48,37 @@ cmd_run() {
   dispatch "$platform" "$action" strict
 }
 
+# cmd_plugins <install|update> [platform] — the `supensour plugins …` group.
+cmd_plugins() {
+  local sub="${1:-help}"; shift || true
+  case "$sub" in
+    install)         cmd_run install "${1:-}" ;;
+    update)          cmd_run update  "${1:-}" ;;
+    help|-h|--help)  usage ;;
+    *)               warn "unknown 'plugins' subcommand: $sub (expected: install | update)"; usage; exit 1 ;;
+  esac
+}
+
 main() {
-  local cmd="${1:-help}"
+  local cmd="${1:-help}"; shift || true
   case "$cmd" in
     init)              ensure_cache; ok "cache ready: $CACHE_DIR" ;;
-    install)           cmd_run install "${2:-}" ;;
-    update)            cmd_run update  "${2:-}" ;;
+    plugins)           cmd_plugins "$@" ;;
+    update)
+      # Bare `update` self-updates the CLI. `update <platform>` is the old plugin
+      # form → redirect with a deprecation notice so muscle memory still works.
+      if [ $# -gt 0 ]; then
+        warn "'supensour update <platform>' moved to 'supensour plugins update <platform>'."
+        cmd_plugins update "$@"
+      else
+        update_cli
+      fi
+      ;;
     help|-h|--help)    usage ;;
+    # --- Deprecated alias (pre-`plugins` layout) ----------------------------
+    install)
+      warn "'supensour install' moved to 'supensour plugins install'."
+      cmd_plugins install "$@" ;;
     *)                 warn "unknown command: $cmd"; usage; exit 1 ;;
   esac
 }
