@@ -19,9 +19,19 @@ log() { printf '%s\n' "$*" >&2; }
 die() { printf '✖ %s\n' "$*" >&2; exit 1; }
 
 # 1. Copy CLI into a stable home.
+# Two cases to handle safely:
+#   • SRC_DIR == CLI_HOME (the install-remote flow clones straight into CLI_HOME):
+#     copying would be src==dest ("cp: … are identical"). Nothing to copy — skip.
+#   • CLI_HOME/bin|lib already exist (re-install): `cp -R src/bin CLI_HOME/` would
+#     nest into CLI_HOME/bin/bin (BSD cp). Remove the old dirs first so it replaces.
 log "Installing CLI → $CLI_HOME"
 mkdir -p "$CLI_HOME"
-cp -R "$SRC_DIR/bin" "$SRC_DIR/lib" "$CLI_HOME/"
+if [ "$SRC_DIR" = "$CLI_HOME" ]; then
+  log "CLI source already at $CLI_HOME — skipping copy."
+else
+  rm -rf "$CLI_HOME/bin" "$CLI_HOME/lib"
+  cp -R "$SRC_DIR/bin" "$SRC_DIR/lib" "$CLI_HOME/"
+fi
 chmod +x "$CLI_HOME/bin/supensour"
 
 # 2. Symlink onto PATH.
